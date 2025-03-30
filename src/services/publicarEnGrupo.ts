@@ -1,4 +1,4 @@
-import { Page, ElementHandle } from 'puppeteer';
+import puppeteer, { Page, ElementHandle } from 'puppeteer';
 import { Grupo } from '../entities/Grupo';
 import { Publicacion } from '../entities/Publicacion';
 import { delay, randomDelay } from '../utils/delay';
@@ -12,7 +12,8 @@ export const publicarEnGrupo = async (
     await page.goto(grupo.url);
     await delay(5000);
 
-    const boton = (await page.$x('//span[contains(text(),"Escribe algo...")]'))[0] as ElementHandle<Element>;
+    const [boton] = await (page as any).$x('//span[contains(text(),"Escribe algo...")]') as [ElementHandle<Element>];
+
 
     if (!boton) return 'fallo';
 
