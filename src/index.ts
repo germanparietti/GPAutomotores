@@ -2,6 +2,8 @@ import 'reflect-metadata';
 import { app } from './app';
 import { AppDataSource } from './config/data-source';
 import dotenv from 'dotenv';
+import 'dotenv/config';
+
 import { iniciarScheduler } from './jobs/scheduler'; // <- nuevo
 
 dotenv.config();
