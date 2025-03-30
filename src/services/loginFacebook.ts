@@ -1,43 +1,79 @@
 import { Page } from 'puppeteer';
 import fs from 'fs';
-import dotenv from 'dotenv';
+import path from 'path';
+import { delay } from '../utils/delay';
 
-dotenv.config();
 
-const COOKIES_PATH = './cookies.json';
+const COOKIES_PATH = path.join(__dirname, '../../cookies.json');
 
+const fbUser = process.env.FB_USER;
+const fbPass = process.env.FB_PASS;
 export const loginFacebook = async (page: Page) => {
-  // Intenta cargar cookies
+  console.log('🍪 Cargando cookies...');
+
   if (fs.existsSync(COOKIES_PATH)) {
-    console.log("🍪 Cargando cookies...");
-    const cookies = JSON.parse(fs.readFileSync(COOKIES_PATH, 'utf-8'));
+    const cookies = JSON.parse(fs.readFileSync(COOKIES_PATH, 'utf8'));
     await page.setCookie(...cookies);
-    await page.goto('https://facebook.com/', { waitUntil: 'networkidle0' });
-    return;
+    await page.goto('https://facebook.com', { waitUntil: 'networkidle2' });
+
+    // Verificamos si ya estamos logueados
+    const isLogged = await page.evaluate(() => {
+      return !!document.querySelector('div[aria-label="Crear"]');
+    });
+
+    if (isLogged) {
+      console.log('✅ Sesión restaurada con cookies.');
+      return;
+    }
+
+    console.log('🔁 Cookies cargadas, pero no se detectó sesión activa.');
   }
 
-  console.log('🔐 Iniciando sesión en Facebook...');
-  await page.goto('https://facebook.com/login/', { waitUntil: 'networkidle0' });
-
-  await page.type('#email', process.env.FB_USER!, { delay: 100 });
-  await page.type('#pass', process.env.FB_PASS!, { delay: 100 });
+  console.log('🔐 Iniciando sesión manualmente...');
+  await page.goto('https://facebook.com/login/', { waitUntil: 'networkidle2' });
+ 
+  if (!fbUser || !fbPass) {
+    throw new Error('❌ FB_USER o FB_PASS no están definidos en el archivo .env');
+  }
+  
+  await page.type('#email', fbUser, { delay: 100 });
+  await page.type('#pass', fbPass, { delay: 100 });
   await page.click('#loginbutton');
 
-  console.log("⚠️ Si aparece captcha o verificación, resolvelo manualmente.");
-  await page.waitForNavigation({ waitUntil: 'networkidle0' });
-
-  // Verificación adicional de URLs sospechosas o de verificación 2FA
-  const url = page.url();
-  const isCheckpoint = url.includes('checkpoint');
-  const isLogin = url.includes('login');
-  const isTwoStep = url.includes('two_step_verification');
-
-  if (isCheckpoint || isLogin || isTwoStep) {
-    console.log("⏳ Verificación manual detectada. Esperando que continúes...");
-    await page.waitForNavigation({ waitUntil: 'networkidle0' });
+  // Esperamos a que aparezca alguna de estas condiciones:
+  try {
+    await Promise.race([
+      page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 }),
+      page.waitForSelector('input[name="approvals_code"]', { timeout: 15000 }), // 2FA
+      page.waitForSelector('div[aria-label="Crear"]', { timeout: 15000 }), // Home de FB
+    ]);
+  } catch (err) {
+    console.log('⏳ Posible CAPTCHA detectado. Esperando resolución manual...');
   }
 
-  const newCookies = await page.cookies();
-  fs.writeFileSync(COOKIES_PATH, JSON.stringify(newCookies, null, 2));
-  console.log('✅ Sesión iniciada y cookies guardadas.');
+  // Si sigue en la pantalla de login o de verificación, esperar manualmente
+  let intentos = 0;
+  while (true) {
+    const url = page.url();
+    const isLogged = await page.evaluate(() => {
+      return !!document.querySelector('div[aria-label="Crear"]');
+    });
+
+    if (isLogged) {
+      console.log('✅ Login exitoso.');
+      break;
+    }
+
+    if (intentos > 60) {
+      console.log('❌ Timeout esperando resolución manual.');
+      break;
+    }
+
+    await delay(2000);
+    intentos++;
+  }
+
+  const cookies = await page.cookies();
+  fs.writeFileSync(COOKIES_PATH, JSON.stringify(cookies, null, 2));
+  console.log('💾 Cookies guardadas.');
 };
