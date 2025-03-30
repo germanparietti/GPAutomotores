@@ -56,3 +56,26 @@ export const actualizarSolicitud = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Error al actualizar la solicitud.', detalles: err });
   }
 };
+
+export const resetEstadosGrupos = async (req: Request, res: Response) => {
+  try {
+    const { ids } = req.body;
+
+    if (!Array.isArray(ids)) {
+      return res.status(400).json({ message: 'Debes enviar un array de IDs' });
+    }
+
+    const grupoRepo = AppDataSource.getRepository(Grupo);
+    const grupos = await grupoRepo.findByIds(ids);
+
+    for (const grupo of grupos) {
+      grupo.estado = 0;
+      await grupoRepo.save(grupo);
+    }
+
+    res.json({ message: 'Estados reseteados correctamente', grupos });
+  } catch (error) {
+    console.error('Error al resetear estados:', error);
+    res.status(500).json({ message: 'Error al resetear estados' });
+  }
+};

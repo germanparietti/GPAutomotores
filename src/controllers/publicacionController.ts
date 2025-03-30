@@ -4,10 +4,12 @@ import { Publicacion } from '../entities/Publicacion';
 
 const pubRepo = AppDataSource.getRepository(Publicacion);
 
-export const getPublicaciones = async (_req: Request, res: Response) => {
-  const publicaciones = await pubRepo.find();
+export const getPublicaciones = async (req: Request, res: Response) => {
+  const publicacionRepo = AppDataSource.getRepository(Publicacion);
+  const publicaciones = await publicacionRepo.find({ relations: ['grupos'] });
   res.json(publicaciones);
 };
+
 
 export const createPublicacion = async (req: Request, res: Response) => {
   try {

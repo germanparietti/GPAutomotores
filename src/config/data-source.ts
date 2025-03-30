@@ -13,7 +13,7 @@ export const AppDataSource = new DataSource({
   password: process.env.DB_PASS,
   database: process.env.DB_NAME,
   synchronize: true,
-  dropSchema:true,
+  dropSchema:false,
   logging: false,
   entities: [Grupo, Publicacion],
 });

@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, Index } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, Index, ManyToMany  } from 'typeorm';
 import { SolicitudEstado } from '../enums/SolicitudEstado';
+import { Publicacion } from './Publicacion';
 
 @Entity()
 export class Grupo {
@@ -25,4 +26,6 @@ export class Grupo {
     default: SolicitudEstado.PENDIENTE
   })
   solicitud!: SolicitudEstado;
+  @ManyToMany(() => Publicacion, publicacion => publicacion.grupos)
+publicaciones!: Publicacion[];
 }

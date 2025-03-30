@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable } from 'typeorm';
+import { Grupo } from './Grupo';
 
 @Entity()
 export class Publicacion {
@@ -10,4 +11,8 @@ export class Publicacion {
 
   @Column()
   texto!: string;
+
+  @ManyToMany(() => Grupo, grupo => grupo.publicaciones)
+@JoinTable()
+grupos!: Grupo[];
 }
